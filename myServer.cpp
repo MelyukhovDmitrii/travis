@@ -1,3 +1,4 @@
+#include "myServer.h"
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -21,20 +22,20 @@ struct Socket {
 
 vector<Socket> clients;
 
-Socket* socketAccept(int listener){
+Socket socketAccept(int listener){
     sockaddr_in addr;
     unsigned int size = sizeof(addr);
     int socks = accept(listener, (sockaddr*)&addr, &size);
-    Socket* socket = new Socket(socks, addr);
+    Socket socket(socks, addr);
     return socket;
 }
 
-bool checkSocketResponse(Socket *socket){
+bool checkSocketResponse(Socket socket){
     string mes = "check";
-    int n  = send(socket->socket, mes.c_str(), mes.length(), 0);
+    int n  = send(socket.socket, mes.c_str(), mes.length(), 0);
     mes = "";
-    mes.resize(100);
-    int n2 = recv(socket->socket, (void *) mes.c_str(), 1024, 0);
+    mes.resize(n);
+    int n2 = recv(socket.socket, (void *) mes.c_str(), n, 0);
     string subs = mes.substr(0, n2);
     if(subs.compare("check") == 0){
         return true;
@@ -43,47 +44,51 @@ bool checkSocketResponse(Socket *socket){
     }
 }
 
-void sendMessageToAllSockets(vector<Socket> *clients, string message){
-    for(int i = 0; i < clients->size(); i++){
-        send(clients->at(i).socket, message.c_str(), message.length(), 0);
+void sendMessageToAllSockets(vector<Socket> *cs, string m){
+    for(int i = 0; i < cs->size(); i++){
+        send(cs->at(i).socket, m.c_str(), m.length(), 0);
     }
 }
 
-void checkAllSocketsResponse(vector<Socket> *clients){
-    for(int i = 0; i < clients->size(); i++){
-        if(!checkSocketResponse(&clients->at(i))){
-            char *ip = inet_ntoa(clients->at(i).addr.sin_addr);
+void checkAllSocketsResponse(vector<Socket> *cs, Socket socket){
+    for(int i = 0; i < cs->size(); i++){
+        if(!checkSocketResponse(cs->at(i))){
+            char *ip = inet_ntoa(cs->at(i).addr.sin_addr);
             string s = "DOWN ";
             s.append(ip);
-            clients->erase(clients->begin() + i);
-            checkAllSocketsResponse(clients);
-            sendMessageToAllSockets(clients, s);
+            s.append("\n");
+            cs->erase(cs->begin() + i);
+            checkAllSocketsResponse(cs, socket);
+            sendMessageToAllSockets(cs, s);
+            send(socket.socket, s.c_str(), s.length(), 0);
             break;
         }
     }
 }
 
-void sendIpOfAllSocketsToSocket(vector<Socket> *clients, Socket *socket){
-    for(int i = 0; i < clients->size(); i++){
-        char *ip = inet_ntoa(clients->at(i).addr.sin_addr);
+void sendIpOfAllSocketsToSocket(vector<Socket> *cs, Socket socket){
+    for(int i = 0; i < cs->size(); i++){
+        char *ip = inet_ntoa(cs->at(i).addr.sin_addr);
         string s = "UP ";
         s.append(ip);
-        send(socket->socket, s.c_str(), s.length(), 0);
+        s.append("\n");
+        send(socket.socket, s.c_str(), s.length(), 0);
     }
 }
 
-void sendSocketIpToAllSockets(vector<Socket> *clients, Socket *socket){
-    for(int i = 0; i < clients->size(); i++){
-        char *ip = inet_ntoa(socket->addr.sin_addr);
+void sendSocketIpToAllSockets(vector<Socket> *cs, Socket socket){
+    for(int i = 0; i < cs->size(); i++){
+        char *ip = inet_ntoa(socket.addr.sin_addr);
         string s = "UP ";
         s.append(ip);
-        send(clients->at(i).socket, s.c_str(), s.length(), 0);
+        s.append("\n");
+        send(cs->at(i).socket, s.c_str(), s.length(), 0);
     }
 }
 
-int main()
+int initServer()
 {
-    int sock, listener;
+    int listener;
     struct sockaddr_in addr;
 
     string buf;
@@ -94,7 +99,7 @@ int main()
     {
         perror("socket");
     }
-    
+
     addr.sin_family = AF_INET;
     addr.sin_port = htons(3425);
     addr.sin_addr.s_addr = htonl(INADDR_ANY);
@@ -104,38 +109,21 @@ int main()
     }
 
     listen(listener, 1);
-    
+
     while(1) {
-        Socket* socket = socketAccept(listener);
-        cout << inet_ntoa(socket->addr.sin_addr) << endl;
-        if(socket->socket < 0) {
-            perror("accept");
-            close(socket->socket);
+        Socket socket = socketAccept(listener);
+        //cout << inet_ntoa(socket.addr.sin_addr) << endl;
+        string hello = "hello";
+        hello.append("\n");
+        send(socket.socket, hello.c_str(), hello.length(), 0);
+        if(socket.socket < 0) {
+            close(socket.socket);
         } else {
-            checkAllSocketsResponse(&clients);
+            checkAllSocketsResponse(&clients, socket);
             sendIpOfAllSocketsToSocket(&clients, socket);
             sendSocketIpToAllSockets(&clients, socket);
-            clients.push_back(*socket);
+            clients.push_back(socket);
         }
-
-
-        /*while(1)
-        {
-
-            bool b =  checkSocketResponse(socket);
-            if(b) {
-                cout << "true";
-            };
-            bytes_read = recv(socket->socket, (void *) buf.c_str(), 1024, 0);
-            if(bytes_read <= 0) break;
-            printf(buf.c_str());
-            int i = send(socket->socket, buf.c_str(), bytes_read, MSG_NOSIGNAL);
-            cout << i << endl;
-            send(socket->socket, buf.c_str(), bytes_read, 0);
-        }*/
-    
-        //close(socket->socket);
     }
-    
     return 0;
 }

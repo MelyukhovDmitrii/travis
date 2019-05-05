@@ -1,0 +1,12 @@
+//
+// Created by dredd on 5/5/19.
+//
+
+#ifndef OT_TASK4_MELYUKHOVDMITRII_MYSERVER_H
+#define OT_TASK4_MELYUKHOVDMITRII_MYSERVER_H
+
+
+
+#endif //OT_TASK4_MELYUKHOVDMITRII_MYSERVER_H
+
+int initServer();
