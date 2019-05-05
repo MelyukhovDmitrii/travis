@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.14)
+cmake_minimum_required(VERSION 3.9)
 project(ot_task4_MelyukhovDmitrii)
 
 set(CMAKE_CXX_STANDARD 14)
